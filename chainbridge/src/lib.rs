@@ -113,7 +113,7 @@ const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
 pub mod pallet {
     use super::*;
     use codec::EncodeLike;
-    use frame_support::{pallet_prelude::*, weights::GetDispatchInfo, Blake2_128Concat};
+    use frame_support::{pallet_prelude::*, dispatch::GetDispatchInfo, Blake2_128Concat};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
 
@@ -121,14 +121,14 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Origin used to administer the pallet
-        type AdminOrigin: EnsureOrigin<Self::Origin>;
+        type AdminOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
         /// Proposed dispatchable call
         type Proposal: Parameter
-            + Dispatchable<Origin = Self::Origin>
+            + Dispatchable<RuntimeOrigin = Self::RuntimeOrigin>
             + EncodeLike
             + GetDispatchInfo;
 
@@ -354,7 +354,7 @@ pub mod pallet {
         /// # </weight>
         #[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
-			(dispatch_info.weight + 195_000_000, dispatch_info.class, Pays::Yes)
+			(dispatch_info.weight + sp_weights::Weight::from_ref_time(195_000_000), dispatch_info.class, Pays::Yes)
 		})]
         pub fn acknowledge_proposal(
             origin: OriginFor<T>,
@@ -414,7 +414,7 @@ pub mod pallet {
         /// # </weight>
         #[pallet::weight({
 			let dispatch_info = prop.get_dispatch_info();
-			(dispatch_info.weight + 195_000_000, dispatch_info.class, Pays::Yes)
+			(dispatch_info.weight + sp_weights::Weight::from_ref_time(195_000_000), dispatch_info.class, Pays::Yes)
 		})]
         pub fn eval_vote_state(
             origin: OriginFor<T>,
@@ -431,7 +431,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // *** Utility methods ***
 
-        pub fn ensure_admin(o: T::Origin) -> DispatchResult {
+        pub fn ensure_admin(o: T::RuntimeOrigin) -> DispatchResult {
             T::AdminOrigin::ensure_origin(o)?;
             Ok(().into())
         }
@@ -705,14 +705,14 @@ pub mod pallet {
 
 /// Simple ensure origin for the bridge account
 pub struct EnsureBridge<T>(sp_std::marker::PhantomData<T>);
-impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
+impl<T: Config> EnsureOrigin<T::RuntimeOrigin> for EnsureBridge<T> {
     type Success = T::AccountId;
 
-    fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+    fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
         let bridge_id = MODULE_ID.into_account_truncating();
         o.into().and_then(|o| match o {
             frame_system::RawOrigin::Signed(who) if who == bridge_id => Ok(bridge_id),
-            r => Err(T::Origin::from(r)),
+            r => Err(T::RuntimeOrigin::from(r)),
         })
     }
 
@@ -720,7 +720,7 @@ impl<T: Config> EnsureOrigin<T::Origin> for EnsureBridge<T> {
     // ///
     // /// ** Should be used for benchmarking only!!! **
     // #[cfg(feature = "runtime-benchmarks")]
-    // fn successful_origin() -> T::Origin {
-    //     T::Origin::from(frame_system::RawOrigin::Signed(<Pallet<T>>::account_id()))
+    // fn successful_origin() -> T::RuntimeOrigin {
+    //     T::RuntimeOrigin::from(frame_system::RawOrigin::Signed(<Pallet<T>>::account_id()))
     // }
 }

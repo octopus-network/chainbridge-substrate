@@ -2,8 +2,8 @@
 
 use super::{
     mock::{
-        assert_events, expect_event, new_test_ext, Assets, Balances, Bridge, Call,
-        ChainBridgeTransfer, Erc721, Erc721Id, Event, HashId, NativeTokenId, Origin,
+        assert_events, expect_event, new_test_ext, Assets, Balances, Bridge, RuntimeCall,
+        ChainBridgeTransfer, Erc721, Erc721Id, RuntimeEvent, HashId, NativeTokenId, RuntimeOrigin,
         ProposalLifetime, Test, ENDOWED_BALANCE, RELAYER_A, RELAYER_B, RELAYER_C,
     },
     *,
@@ -21,16 +21,16 @@ use sp_keyring::AccountKeyring;
 
 const TEST_THRESHOLD: u32 = 2;
 
-fn make_remark_proposal(hash: H256) -> Call {
+fn make_remark_proposal(hash: H256) -> RuntimeCall {
     let resource_id = HashId::get();
-    Call::ChainBridgeTransfer(crate::Call::remark {
+    RuntimeCall::ChainBridgeTransfer(crate::Call::remark {
         hash,
         r_id: resource_id,
     })
 }
 
-fn make_transfer_proposal(resource_id: ResourceId, to: AccountId32, amount: u64) -> Call {
-    Call::ChainBridgeTransfer(crate::Call::transfer {
+fn make_transfer_proposal(resource_id: ResourceId, to: AccountId32, amount: u64) -> RuntimeCall {
+    RuntimeCall::ChainBridgeTransfer(crate::Call::transfer {
         to,
         amount: amount.into(),
         r_id: resource_id,
@@ -44,11 +44,11 @@ fn transfer_hash() {
         let resource_id = HashId::get();
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
 
-        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
+        assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
 
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_chain.clone()));
         assert_ok!(ChainBridgeTransfer::transfer_hash(
-            Origin::signed(AccountId32::new([1u8; 32])),
+            RuntimeOrigin::signed(AccountId32::new([1u8; 32])),
             hash.clone(),
             dest_chain,
         ));
@@ -70,9 +70,9 @@ fn transfer_native() {
         let amount: Balance = 1 * DOLLARS;
         let recipient = b"davirain.xyz".to_vec(); // recipient account
 
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_chain.clone()));
         assert_ok!(ChainBridgeTransfer::transfer_native(
-            Origin::signed(RELAYER_A),
+            RuntimeOrigin::signed(RELAYER_A),
             amount.clone(),
             recipient.clone(),
             dest_chain,
@@ -101,7 +101,7 @@ fn transfer_erc721() {
 
         // Create a token
         assert_ok!(Erc721::mint(
-            Origin::root(),
+            RuntimeOrigin::root(),
             RELAYER_A,
             token_id,
             metadata.clone()
@@ -115,9 +115,9 @@ fn transfer_erc721() {
         );
 
         // Whitelist destination and transfer
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_chain.clone()));
         assert_ok!(ChainBridgeTransfer::transfer_erc721(
-            Origin::signed(RELAYER_A),
+            RuntimeOrigin::signed(RELAYER_A),
             recipient.clone(),
             token_id,
             dest_chain,
@@ -138,7 +138,7 @@ fn transfer_erc721() {
         // Transfer should fail as token doesn't exist
         assert_noop!(
             ChainBridgeTransfer::transfer_erc721(
-                Origin::signed(RELAYER_A),
+                RuntimeOrigin::signed(RELAYER_A),
                 recipient.clone(),
                 token_id,
                 dest_chain,
@@ -160,7 +160,7 @@ fn mint_erc721() {
         assert_eq!(Erc721::tokens(token_id), None);
         // Mint
         assert_ok!(ChainBridgeTransfer::mint_erc721(
-            Origin::signed(bridge_id.clone()),
+            RuntimeOrigin::signed(bridge_id.clone()),
             recipient.clone(),
             token_id,
             metadata.clone(),
@@ -177,7 +177,7 @@ fn mint_erc721() {
         // Cannot mint same token
         assert_noop!(
             ChainBridgeTransfer::mint_erc721(
-                Origin::signed(bridge_id),
+                RuntimeOrigin::signed(bridge_id),
                 recipient,
                 token_id,
                 metadata.clone(),
@@ -198,7 +198,7 @@ fn transfer_non_native() {
         let recipient = vec![99];
         // set token_id
         assert_ok!(ChainBridgeTransfer::set_token_id(
-            Origin::root(),
+            RuntimeOrigin::root(),
             resource_id.clone(),
             0,
             b"DENOM".to_vec()
@@ -206,7 +206,7 @@ fn transfer_non_native() {
 
         // force_create Assets token_id 0
         assert_ok!(Assets::force_create(
-            Origin::root(),
+            RuntimeOrigin::root(),
             0,
             sp_runtime::MultiAddress::Id(ferdie.clone()),
             true,
@@ -215,7 +215,7 @@ fn transfer_non_native() {
 
         let amount: Balance = 1 * DOLLARS;
         assert_ok!(Assets::mint(
-            Origin::signed(ferdie.clone()),
+            RuntimeOrigin::signed(ferdie.clone()),
             0,
             sp_runtime::MultiAddress::Id(ferdie.clone()),
             amount
@@ -224,9 +224,9 @@ fn transfer_non_native() {
         // make sure have some  amount after mint
         assert_eq!(Assets::balance(0, ferdie.clone()), amount);
 
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), dest_chain.clone()));
         assert_ok!(ChainBridgeTransfer::generic_token_transfer(
-            Origin::signed(ferdie.clone()),
+            RuntimeOrigin::signed(ferdie.clone()),
             amount,
             resource_id,
             recipient.clone(),
@@ -236,7 +236,7 @@ fn transfer_non_native() {
         // maket sure transfer have 0 amount
         assert_eq!(Assets::balance(0, ferdie), 0);
 
-        assert_events(vec![Event::Bridge(bridge::Event::FungibleTransfer(
+        assert_events(vec![RuntimeEvent::Bridge(bridge::Event::FungibleTransfer(
             0,
             1,
             resource_id,
@@ -255,7 +255,7 @@ fn transfer() {
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
         // Transfer and check result
         assert_ok!(ChainBridgeTransfer::transfer(
-            Origin::signed(Bridge::account_id()),
+            RuntimeOrigin::signed(Bridge::account_id()),
             RELAYER_A,
             10,
             resource_id,
@@ -263,7 +263,7 @@ fn transfer() {
         assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
         assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
-        assert_events(vec![Event::Balances(pallet_balances::Event::Transfer {
+        assert_events(vec![RuntimeEvent::Balances(pallet_balances::Event::Transfer {
             from: Bridge::account_id(),
             to: RELAYER_A,
             amount: 10,
@@ -281,21 +281,21 @@ fn execute_remark() {
         let r_id = bridge::derive_resource_id(src_id, b"hash");
         let resource = b"Example.remark".to_vec();
 
-        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), src_id));
-        assert_ok!(Bridge::set_resource(Origin::root(), r_id, resource));
+        assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), src_id));
+        assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), r_id, resource));
 
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_A),
+            RuntimeOrigin::signed(RELAYER_A),
             prop_id,
             src_id,
             r_id,
             Box::new(proposal.clone())
         ));
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_B),
+            RuntimeOrigin::signed(RELAYER_B),
             prop_id,
             src_id,
             r_id,
@@ -312,18 +312,18 @@ fn execute_remark_bad_origin() {
         let hash: H256 = "ABC".using_encoded(blake2_256).into();
         let resource_id = HashId::get();
         assert_ok!(ChainBridgeTransfer::remark(
-            Origin::signed(Bridge::account_id()),
+            RuntimeOrigin::signed(Bridge::account_id()),
             hash,
             resource_id
         ));
         // Don't allow any signed origin except from bridge addr
         assert_noop!(
-            ChainBridgeTransfer::remark(Origin::signed(RELAYER_A), hash, resource_id),
+            ChainBridgeTransfer::remark(RuntimeOrigin::signed(RELAYER_A), hash, resource_id),
             DispatchError::BadOrigin
         );
         // Don't allow root calls
         assert_noop!(
-            ChainBridgeTransfer::remark(Origin::root(), hash, resource_id),
+            ChainBridgeTransfer::remark(RuntimeOrigin::root(), hash, resource_id),
             DispatchError::BadOrigin
         );
     })
@@ -342,7 +342,7 @@ fn create_sucessful_transfer_proposal_non_native_token() {
         let ferdie: AccountId = AccountKeyring::Ferdie.into();
         // set token_id
         assert_ok!(ChainBridgeTransfer::set_token_id(
-            Origin::root(),
+            RuntimeOrigin::root(),
             resource_id.clone(),
             0,
             b"DENOM".to_vec()
@@ -350,23 +350,23 @@ fn create_sucessful_transfer_proposal_non_native_token() {
 
         // force_create Assets token_id 0
         assert_ok!(Assets::force_create(
-            Origin::root(),
+            RuntimeOrigin::root(),
             0,
             sp_runtime::MultiAddress::Id(ferdie.clone()),
             true,
             1
         ));
 
-        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_C));
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), src_id));
-        assert_ok!(Bridge::set_resource(Origin::root(), r_id, resource));
+        assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD,));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), src_id));
+        assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), r_id, resource));
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_A),
+            RuntimeOrigin::signed(RELAYER_A),
             prop_id,
             src_id,
             r_id,
@@ -383,7 +383,7 @@ fn create_sucessful_transfer_proposal_non_native_token() {
 
         // Second relayer votes against
         assert_ok!(Bridge::reject_proposal(
-            Origin::signed(RELAYER_B),
+            RuntimeOrigin::signed(RELAYER_B),
             prop_id,
             src_id,
             r_id,
@@ -400,7 +400,7 @@ fn create_sucessful_transfer_proposal_non_native_token() {
 
         // Third relayer votes in favour
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_C),
+            RuntimeOrigin::signed(RELAYER_C),
             prop_id,
             src_id,
             r_id,
@@ -419,16 +419,16 @@ fn create_sucessful_transfer_proposal_non_native_token() {
         assert_eq!(Assets::balance(0, RELAYER_A), 10);
 
         assert_events(vec![
-            Event::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
-            Event::Bridge(bridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
-            Event::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
-            Event::Bridge(bridge::Event::ProposalApproved(src_id, prop_id)),
-            Event::Assets(assets::Event::Issued {
+            RuntimeEvent::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
+            RuntimeEvent::Bridge(bridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            RuntimeEvent::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
+            RuntimeEvent::Bridge(bridge::Event::ProposalApproved(src_id, prop_id)),
+            RuntimeEvent::Assets(assets::Event::Issued {
                 asset_id: 0,
                 owner: RELAYER_A,
                 total_supply: 10,
             }),
-            Event::Bridge(bridge::Event::ProposalSucceeded(src_id, prop_id)),
+            RuntimeEvent::Bridge(bridge::Event::ProposalSucceeded(src_id, prop_id)),
         ]);
     })
 }
@@ -443,16 +443,16 @@ fn create_sucessful_transfer_proposal_native_token() {
         let resource_id = NativeTokenId::get();
         let proposal = make_transfer_proposal(resource_id, RELAYER_A, 10);
 
-        assert_ok!(Bridge::set_threshold(Origin::root(), TEST_THRESHOLD));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_A));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_B));
-        assert_ok!(Bridge::add_relayer(Origin::root(), RELAYER_C));
-        assert_ok!(Bridge::whitelist_chain(Origin::root(), src_id));
-        assert_ok!(Bridge::set_resource(Origin::root(), r_id, resource));
+        assert_ok!(Bridge::set_threshold(RuntimeOrigin::root(), TEST_THRESHOLD));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_A));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_B));
+        assert_ok!(Bridge::add_relayer(RuntimeOrigin::root(), RELAYER_C));
+        assert_ok!(Bridge::whitelist_chain(RuntimeOrigin::root(), src_id));
+        assert_ok!(Bridge::set_resource(RuntimeOrigin::root(), r_id, resource));
 
         // Create proposal (& vote)
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_A),
+            RuntimeOrigin::signed(RELAYER_A),
             prop_id,
             src_id,
             r_id,
@@ -469,7 +469,7 @@ fn create_sucessful_transfer_proposal_native_token() {
 
         // Second relayer votes against
         assert_ok!(Bridge::reject_proposal(
-            Origin::signed(RELAYER_B),
+            RuntimeOrigin::signed(RELAYER_B),
             prop_id,
             src_id,
             r_id,
@@ -486,7 +486,7 @@ fn create_sucessful_transfer_proposal_native_token() {
 
         // Third relayer votes in favour
         assert_ok!(Bridge::acknowledge_proposal(
-            Origin::signed(RELAYER_C),
+            RuntimeOrigin::signed(RELAYER_C),
             prop_id,
             src_id,
             r_id,
@@ -508,16 +508,16 @@ fn create_sucessful_transfer_proposal_native_token() {
         );
 
         assert_events(vec![
-            Event::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
-            Event::Bridge(bridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
-            Event::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
-            Event::Bridge(bridge::Event::ProposalApproved(src_id, prop_id)),
-            Event::Balances(pallet_balances::Event::Transfer {
+            RuntimeEvent::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
+            RuntimeEvent::Bridge(bridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
+            RuntimeEvent::Bridge(bridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
+            RuntimeEvent::Bridge(bridge::Event::ProposalApproved(src_id, prop_id)),
+            RuntimeEvent::Balances(pallet_balances::Event::Transfer {
                 from: Bridge::account_id(),
                 to: RELAYER_A,
                 amount: 10,
             }),
-            Event::Bridge(bridge::Event::ProposalSucceeded(src_id, prop_id)),
+            RuntimeEvent::Bridge(bridge::Event::ProposalSucceeded(src_id, prop_id)),
         ]);
     })
 }

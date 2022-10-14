@@ -42,15 +42,15 @@ impl frame_system::Config for Test {
     type BlockWeights = ();
     type BlockLength = ();
     type AccountId = AccountId;
-    type Call = Call;
+    type RuntimeCall = RuntimeCall;
     type Lookup = AccountIdLookup<AccountId, ()>;
     type Index = Index;
     type BlockNumber = BlockNumber;
     type Hash = Hash;
     type Hashing = BlakeTwo256;
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
-    type Event = Event;
-    type Origin = Origin;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -87,9 +87,9 @@ parameter_types! {
 }
 
 impl bridge::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type Proposal = Call;
+    type Proposal = RuntimeCall;
     type ChainId = TestChainId;
     type ProposalLifetime = ProposalLifetime;
 }
@@ -105,7 +105,7 @@ impl pallet_balances::Config for Test {
     type MaxReserves = MaxReserves;
     type ReserveIdentifier = [u8; 8];
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -121,7 +121,7 @@ parameter_types! {
 }
 
 impl pallet_assets::Config<pallet_assets::Instance1> for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = AssetBalance;
     type AssetId = AssetId;
     type Currency = Balances;
@@ -145,7 +145,7 @@ parameter_types! {
 }
 
 impl pallet_chainbridge_erc721::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Identifier = Erc721Id;
 }
 
@@ -153,7 +153,7 @@ pub type AssetBalance = u128;
 pub type AssetId = u32;
 
 impl Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BridgeOrigin = bridge::EnsureBridge<Test>;
     type Currency = Balances;
     type NativeTokenId = NativeTokenId;
@@ -195,24 +195,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     ext
 }
 
-fn last_event() -> Event {
+fn last_event() -> RuntimeEvent {
     frame_system::Pallet::<Test>::events()
         .pop()
         .map(|e| e.event)
         .expect("Event expected")
 }
 
-pub fn expect_event<E: Into<Event>>(e: E) {
+pub fn expect_event<E: Into<RuntimeEvent>>(e: E) {
     assert_eq!(last_event(), e.into());
 }
 
 // Asserts that the event was emitted at some point.
-pub fn event_exists<E: Into<Event>>(e: E) {
-    let actual: Vec<Event> = frame_system::Pallet::<Test>::events()
+pub fn event_exists<E: Into<RuntimeEvent>>(e: E) {
+    let actual: Vec<RuntimeEvent> = frame_system::Pallet::<Test>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
-    let e: Event = e.into();
+    let e: RuntimeEvent = e.into();
     let mut exists = false;
     for evt in actual {
         if evt == e {
@@ -225,8 +225,8 @@ pub fn event_exists<E: Into<Event>>(e: E) {
 
 // Checks events against the latest. A contiguous set of events must be provided. They must
 // include the most recent event, but do not have to include every past event.
-pub fn assert_events(mut expected: Vec<Event>) {
-    let mut actual: Vec<Event> = frame_system::Pallet::<Test>::events()
+pub fn assert_events(mut expected: Vec<RuntimeEvent>) {
+    let mut actual: Vec<RuntimeEvent> = frame_system::Pallet::<Test>::events()
         .iter()
         .map(|e| e.event.clone())
         .collect();
