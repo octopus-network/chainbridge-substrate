@@ -1,9 +1,5 @@
-#![cfg(test)]
-
-use super::mock::{new_test_ext, Erc721, Origin, Test, USER_A, USER_B, USER_C};
-use super::*;
+use crate::{mock::*, *};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::U256;
 
 #[test]
 fn mint_burn_tokens() {
@@ -52,14 +48,14 @@ fn mint_burn_tokens() {
         );
 
         assert_ok!(Erc721::burn(Origin::root(), id_a));
-        assert_eq!(Erc721::token_count(), 1.into());
-        assert!(!<Tokens>::contains_key(&id_a));
-        assert!(!<TokenOwner<Test>>::contains_key(&id_a));
+        assert_eq!(Erc721::token_count(), 1.into()); // todo
+        assert!(!Tokens::<Test>::contains_key(&id_a));
+        assert!(!TokenOwner::<Test>::contains_key(&id_a));
 
         assert_ok!(Erc721::burn(Origin::root(), id_b));
-        assert_eq!(Erc721::token_count(), 0.into());
-        assert!(!<Tokens>::contains_key(&id_b));
-        assert!(!<TokenOwner<Test>>::contains_key(&id_b));
+        assert_eq!(Erc721::token_count(), 0.into()); // todo
+        assert!(!Tokens::<Test>::contains_key(&id_b));
+        assert!(!TokenOwner::<Test>::contains_key(&id_b));
     })
 }
 
