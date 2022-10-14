@@ -172,7 +172,7 @@ pub const RELAYER_C: AccountId32 = AccountId32::new([4u8; 32]);
 pub const ENDOWED_BALANCE: Balance = 100 * DOLLARS;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let bridge_id = PalletId(*b"oc/bridg").into_account_truncating();
+    let bridge_id = PalletId(*b"oc/bridg").into_account();
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
